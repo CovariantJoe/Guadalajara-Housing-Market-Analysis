@@ -176,7 +176,7 @@ def mercado_libre_parser(soup):
                 elif house[i]["type"] == 'price':                    
                     price = house[i]["price"]["current_price"]["value"]
                 elif house[i]["type"] == 'attributes_list':             
-                    info_rooms = house["components"][i]["attributes_list"]["texts"]
+                    info_rooms = house[i]["attributes_list"]["texts"]
                 elif house[i]["type"] == 'location':             
                     info_location = house[i]["locations"]["text"]
         except:
@@ -238,7 +238,8 @@ def casas_y_terrenos_parser(soup):
 
 def web_archive_parser(soup, url):
     '''
-    Function to parse the HTML returned by webarchive with JSON and re
+    Function to parse the HTML returned by wayback machine with JSON and re.
+    It works with all the different sources tested
 
     Parameters
     ----------
@@ -265,30 +266,170 @@ def web_archive_parser(soup, url):
         source = json.loads(match.group(1))["initialState"]["results"]
         
         for house in source:
+            name = house["subtitles"]
+            if "local" in name.lower():
+                continue
             if "departamento" in house["subtitles"]["operation"].lower() or "departamento" in house["title"].lower():
                 tipo = "departamento"
             elif "casa" in house["subtitles"]["operation"].lower() or "casa" in house["title"].lower():
                 tipo = "casa"
             else:
-                tipo = "na"
+                tipo = None
             if "renta" in house["subtitles"]["operation"].lower() or "renta" in house["title"].lower():
                 sale = "rent"
             elif "venta" in house["subtitles"]["operation"].lower() or "venta" in house["title"].lower():
                 sale = "sale"
             else:
-                sale = "na"
+                sale = None
             
-            location = "na"
+            location = None
             info_location = house["location"].split(",")
             for j in range(len(info_location)):
                 if info_location[j].strip().lower() == "guadalajara":
                     location = info_location[j-1].strip()
                     break
                 
-            data.append({"ID":house["id"], "name": house["subtitles"],"price": house["price"]["amount"],"rooms":int(house["descriptions"][1]["label"].split(" ")[0]),"bathrooms":"na","size":int(house["descriptions"][0]["label"].split(" ")[0]),"type":tipo,"sale":sale,"location":location, "year": year, "url":url, "permalink": house["permalink"]})
+            data.append({"ID":house["id"], "name": name,"price": house["price"]["amount"],"rooms":int(house["descriptions"][1]["label"].split(" ")[0]),"bathrooms":None,"size":int(house["descriptions"][0]["label"].split(" ")[0]),"type":tipo,"sale":sale,"location":location, "year": year, "url":url, "permalink": house["permalink"]})
     
     elif "mercadolibre" in url:
-        'div class="rowItem item item--grid new'
+        try:
+            source = soup.find_all('div',class_='rowItem item item--grid new') 
+            
+            for house in source:
+                ID = house.find('div',class_='images-viewer')["item-id"]
+                name = house.find('img')["alt"]
+                permalink = house.find('a')["href"]
+                price = house.find("span", class_="price-fraction").contents[0] # String, need to fix
+                info = house.find("div",class_="item__attrs").contents[0]
+                size = int(info.split("|")[0].strip().split(" ")[0])
+                rooms = int(info.split("|")[1].strip().split(" ")[0])
+                
+                if "local" in name.lower():
+                    continue
+                if "departamento" in house.find("p",class_="item__info-title").contents[0].lower() or "departamento" in name.lower():
+                    tipo = "departamento"
+                elif "casa" in house.find("p",class_="item__info-title").contents[0].lower() or "casa" in name.lower():
+                    tipo = "casa"
+                else:
+                    tipo = None
+                if "renta" in house.find("p",class_="item__info-title").contents[0].lower() or "renta" in name.lower():
+                    sale = "rent"
+                elif "venta" in house.find("p",class_="item__info-title").contents[0].lower() or "venta" in name.lower():
+                    sale = "sale"
+                else:
+                    sale = None
+                    
+                location = house.find("div", class_="item__title").contents[0].strip().split("-")[0].strip()
+                data.append({"ID":ID, "name": name,"price": price,"rooms":rooms,"bathrooms":None,"size":size,"type":tipo,"sale":sale,"location":location, "year": year, "url":url, "permalink": permalink})
+        except:
+            log(f"Error extracting from mercado libre year {year}, the assumptions related to the website's structure at that year are probably wrong, this was tested with late 2017, 2022 and 2025 data")
+    
+    elif "inmuebles24" in url and year >= 2020:
+        baseUrl = "https://web.archive.org"
+        names = soup.find_all("h2", class_="postingCardTitle")
+        prices = soup.find_all("div" ,class_="firstPriceContainer")
+        sizes = soup.find_all("div", class_="postingCardRow postingCardMainFeaturesBlock go-to-posting")
+        locations = soup.find_all("span", class_ ="postingCardLocation")
+        
+        for j in range(len(names)):
+            name = names[j].find("a", class_="go-to-posting").contents[0].strip("\t \n")
+            permalink = baseUrl + names[j].find("a", class_="go-to-posting")["href"]
+            ID = str(permalink.split(".")[-2].split("-")[-1])
+            # needs converting to int:
+            price = prices[j].find("span", class_="firstPrice").contents[0].strip("\t \n").split(" ")[-1]
+
+            if "casas" in url.lower() or "casa" in name.lower():
+                tipo = "casa"
+            elif "departamentos" in url.lower() or "departamento" in name.lower():
+                tipo = "departamento"
+            else:
+                tipo = None
+
+            if "renta" in name.lower() or "renta" in url:
+                sale = "rent"
+            elif "venta" in name.lower() or "venta" in url:
+                sale = "sale"
+            else:
+                sale = None
+                
+            rooms = None; size = None; bathrooms = None
+            for item in sizes[j].find_all("li"):
+                if "Bedrooms" in str(item.contents[1]):
+                    rooms = int(item.contents[2].strip("\t \n").split(" ")[0])
+                elif "Area" in str(item.contents[1]):
+                    size = int(item.contents[2].strip("\t \n").split(" ")[0])
+                elif "Bathrooms" in str(item.contents[1]):
+                    bathrooms = int(item.contents[2].strip("\t \n").strip("baños").strip("\n \t"))
+
+            
+            location = soup.find_all("span", class_ ="postingCardLocation")[j].find("span").contents[0].split(",")[0].strip()
+            data.append({"ID":ID, "name":name, "price":price, "rooms":rooms, "bathrooms":bathrooms, "size":size, "type":tipo, "sale":sale, "location":location, "year":year, "url":url, "permalink":permalink})
+            
     elif "inmuebles24" in url:
-        pass    
+        classes = ["post-titulo","price price-clasificado","bottom-info","post-location dl-aviso-link"] if year >= 2017 else ["post-title","prize","post-text-pay", "noexiste"]        
+        baseUrl = "https://web.archive.org"
+        names = soup.find_all("h4",class_= classes[0])
+        prices = soup.find_all("p", class_= classes[1])
+        sizes = soup.find_all("div", class_= classes[2])
+        locations = soup.find_all("div" ,class_= classes[3])
+        
+        for j in range(len(names)):
+            name = names[j].find("a")["title"]
+            permalink =  baseUrl + names[j].find("a")["href"]
+            ID = str(permalink.split(".")[-2].split("-")[-1])
+            price = prices[j].find("span").contents[0].split(" ")[-1]
+            
+            if price == "Desde":
+                price = prices[j].find("span", class_="precio-valor").contents[0].split(" ")[-1]
+            
+            
+            if "casas" in url.lower() or "casa" in name.lower():
+                tipo = "casa"
+            elif "departamentos" in url.lower() or "departamento" in name.lower():
+                tipo = "departamento"
+            else:
+                tipo = None
+
+            if "renta" in name.lower() or "renta" in url:
+                sale = "rent"
+            elif "venta" in name.lower() or "venta" in url:
+                sale = "sale"
+            else:
+                sale = None
+                
+            rooms = None; size = None; bathrooms = None
+            if year >= 2017:
+                location = locations[j].find("span").contents[0].split(",")[0]
+                for item in sizes[j].find_all("li"):
+                    if "recámaras" in str(item.contents).lower():
+                        rooms = int(item.contents[0].strip("\t \n").split(" ")[0])
+                    elif "construidos" in str(item.contents[1]).lower() or "totales" in str(item.contents[1]).lower():
+                        size = int(item.contents[0].strip("\t \n").split(" ")[0])
+                    elif "baños" in str(item.contents[1]).lower():
+                        bathrooms = int(item.contents[0].strip("\t \n").strip("\n \t"))
+            else:
+                location = None
+                for item in sizes[j].find_all("li"):
+                    if item["class"][0] == "misc-unidades":
+                        continue
+                    elif item["class"][0] == "misc-habitaciones":
+                        try:
+                            rooms = int(item.contents[0].contents[0])
+                        except AttributeError:
+                            rooms = int(item.contents[0].strip("\n \t"))
+                    elif item["class"][0] == "misc-m2cubiertos":
+                        try:
+                            size = int(item.contents[0].contents[0])
+                        except AttributeError:
+                            size = int(item.contents[0].strip("\n \t").split(" ")[0])
+                    elif item["class"][0] == "misc-metros":
+                        size = int(item.contents[2].contents[0])
+                    elif item["class"][0] == "misc-banos":
+                        bathrooms = int(item.contents[0])
+
+            data.append({"ID":ID, "name":name, "price":price, "rooms":rooms, "bathrooms":bathrooms, "size":size, "type":tipo, "sale":sale, "location":location, "year":year, "url":url, "permalink":permalink})
+                
     return data
+
+
+#         transform    if size < 50 or rooms == None: delete            if "local" in name.lower(): delete
