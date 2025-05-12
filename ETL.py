@@ -7,6 +7,9 @@ It prevents duplicates from being written to the db.
 
 Sources are mercado libre, casas y terrenos, and inmuebles24 before they blocked scraper programs.
 
+Credentials need to be provided in Credentials.txt to connect remotely to a IBM db2 database instance.
+
+In order to run this program ibm_db needs to be installed, using pip for example.
 """
 
 import re
@@ -19,79 +22,82 @@ import json
 
 # ------------- Configure -------------
 N_PAGES = 1  # How many pages to request per url, only applies to new data
+dbName = "Housing" # Target database name in IBM db2
 #------------- ------------- -------------
 
 # --------------------------Get new data----------------------------
 Url1 = "https://www.casasyterrenos.com/jalisco/guadalajara/casas/venta?desde=0&hasta=1000000000"
-"https://www.casasyterrenos.com/jalisco/guadalajara/casas/renta?desde=0&hasta=1000000000"
-"https://www.casasyterrenos.com/jalisco/guadalajara/departamentos/renta?desde=0&hasta=1000000000"
-"https://www.casasyterrenos.com/jalisco/guadalajara/departamentos/venta?desde=0&hasta=1000000000"
-Url2 = "https://www.casasyterrenos.com/buscar/jalisco/guadalajara/casas-y-departamentos/renta?desde=0&hasta=1000000000&utm_source=results_page"
+Url2 = "https://www.casasyterrenos.com/jalisco/guadalajara/casas/renta?desde=0&hasta=1000000000"
+Url3 = "https://www.casasyterrenos.com/jalisco/guadalajara/departamentos/renta?desde=0&hasta=1000000000"
+Url4 = "https://www.casasyterrenos.com/jalisco/guadalajara/departamentos/venta?desde=0&hasta=1000000000"
+Url5 = "https://www.casasyterrenos.com/buscar/jalisco/guadalajara/casas-y-departamentos/renta?desde=0&hasta=1000000000&utm_source=results_page"
 
-Url3 = "https://inmuebles.mercadolibre.com.mx/departamentos/renta/jalisco/guadalajara/"
-Url4 = "https://inmuebles.mercadolibre.com.mx/departamentos/venta/jalisco/guadalajara/"
-Url5 = "https://inmuebles.mercadolibre.com.mx/casas/venta/jalisco/guadalajara/"
-Url6 = "https://inmuebles.mercadolibre.com.mx/casas/renta/jalisco/guadalajara/"
+Url6 = "https://inmuebles.mercadolibre.com.mx/departamentos/renta/jalisco/guadalajara/"
+Url7 = "https://inmuebles.mercadolibre.com.mx/departamentos/venta/jalisco/guadalajara/"
+Url8 = "https://inmuebles.mercadolibre.com.mx/casas/venta/jalisco/guadalajara/"
+Url9 = "https://inmuebles.mercadolibre.com.mx/casas/renta/jalisco/guadalajara/"
 
 # --------------------------Data from 2022--------------------------
-Url7 = "https://web.archive.org/web/20221208000341/https://inmuebles.mercadolibre.com.mx/departamentos/renta/jalisco/guadalajara/"
+Url10 = "https://web.archive.org/web/20221208000341/https://inmuebles.mercadolibre.com.mx/departamentos/renta/jalisco/guadalajara/"
 
 # --------------------------Data from 2021--------------------------
-Url8 = "https://web.archive.org/web/20210514160946/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
-Url9 = "https://web.archive.org/web/20210724231729/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
-Url10 =  "https://web.archive.org/web/20210724230610/https://www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
+Url11 = "https://web.archive.org/web/20210514160946/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
+Url12 = "https://web.archive.org/web/20210724231729/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
+Url13 =  "https://web.archive.org/web/20210724230610/https://www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
 
 
 # --------------------------Data from 2020--------------------------
-Url11 = "https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
-Url12 = "https://web.archive.org/web/20201126121239/https://www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
-Url13 = "https://web.archive.org/web/20201129221404/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
-Url14 = "https://web.archive.org/web/20201129095928/https://www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
+Url14 = "https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
+Url15 = "https://web.archive.org/web/20201126121239/https://www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
+Url16 = "https://web.archive.org/web/20201129221404/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
+Url17 = "https://web.archive.org/web/20201129095928/https://www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
 
 # --------------------------Data from 2017--------------------------
 # Apartments
-Url15 = "https://web.archive.org/web/20170707002615/https://inmuebles.mercadolibre.com.mx/departamentos/renta/jalisco/guadalajara/"
-Url16 = "https://web.archive.org/web/20170707041708/https://inmuebles.mercadolibre.com.mx/departamentos/venta/jalisco/guadalajara/"
+Url18 = "https://web.archive.org/web/20170707002615/https://inmuebles.mercadolibre.com.mx/departamentos/renta/jalisco/guadalajara/"
+Url19 = "https://web.archive.org/web/20170707041708/https://inmuebles.mercadolibre.com.mx/departamentos/venta/jalisco/guadalajara/"
 
 
-Url17 = "https://web.archive.org/web/20171117104650/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
-Url18 = "https://web.archive.org/web/20171124091233/http://www.inmuebles24.com/casas-en-renta-en-guadalajara-pagina-2.html"
-Url19 = "https://web.archive.org/web/20171115160106/http://www.inmuebles24.com/casas-en-renta-en-guadalajara-pagina-3.html"
-Url20 = "https://web.archive.org/web/20171115051725/http://www.inmuebles24.com/casas-en-renta-en-guadalajara-pagina-4.html"
-Url21 = "https://web.archive.org/web/20171115030305/http://www.inmuebles24.com/casas-en-renta-en-guadalajara-pagina-5.html"
+Url20 = "https://web.archive.org/web/20171117104650/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
+Url21 = "https://web.archive.org/web/20171124091233/http://www.inmuebles24.com/casas-en-renta-en-guadalajara-pagina-2.html"
+Url22 = "https://web.archive.org/web/20171115160106/http://www.inmuebles24.com/casas-en-renta-en-guadalajara-pagina-3.html"
+Url23 = "https://web.archive.org/web/20171115051725/http://www.inmuebles24.com/casas-en-renta-en-guadalajara-pagina-4.html"
+Url24 = "https://web.archive.org/web/20171115030305/http://www.inmuebles24.com/casas-en-renta-en-guadalajara-pagina-5.html"
 
-Url22 = "https://web.archive.org/web/20171113003311/https://www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
-Url23 = "https://web.archive.org/web/20171111024429/http://www.inmuebles24.com/casas-en-venta-en-guadalajara-pagina-2.html"
-Url24 = "https://web.archive.org/web/20171111053132/http://www.inmuebles24.com/casas-en-venta-en-guadalajara-pagina-3.html"
-Url25 = "https://web.archive.org/web/20171111133150/http://www.inmuebles24.com/casas-en-venta-en-guadalajara-pagina-4.html"
-Url26 = "https://web.archive.org/web/20171112015617/http://www.inmuebles24.com/casas-en-venta-en-guadalajara-pagina-5.html"
+Url25 = "https://web.archive.org/web/20171113003311/https://www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
+Url26 = "https://web.archive.org/web/20171111024429/http://www.inmuebles24.com/casas-en-venta-en-guadalajara-pagina-2.html"
+Url27 = "https://web.archive.org/web/20171111053132/http://www.inmuebles24.com/casas-en-venta-en-guadalajara-pagina-3.html"
+Url28 = "https://web.archive.org/web/20171111133150/http://www.inmuebles24.com/casas-en-venta-en-guadalajara-pagina-4.html"
+Url29 = "https://web.archive.org/web/20171112015617/http://www.inmuebles24.com/casas-en-venta-en-guadalajara-pagina-5.html"
 
-Url27 = "https://web.archive.org/web/20171111020224/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
-Url28 = "https://web.archive.org/web/20171111072509/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara-pagina-2.html"
-Url29 = "https://web.archive.org/web/20171111072509/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara-pagina-3.html"
-Url30 = "https://web.archive.org/web/20171111072509/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara-pagina-4.html"
-Url31 = "https://web.archive.org/web/20171111072509/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara-pagina-5.html"
+Url30 = "https://web.archive.org/web/20171111020224/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
+Url31 = "https://web.archive.org/web/20171111072509/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara-pagina-2.html"
+Url32 = "https://web.archive.org/web/20171111072509/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara-pagina-3.html"
+Url33 = "https://web.archive.org/web/20171111072509/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara-pagina-4.html"
+Url34 = "https://web.archive.org/web/20171111072509/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara-pagina-5.html"
 
 
 
-Url32 = "https://web.archive.org/web/20171122235650/https://www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
-Url33 = "https://web.archive.org/web/20171119111019/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara-pagina-2.html"
-Url34 = "https://web.archive.org/web/20171119111023/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara-pagina-3.html"
-Url35 = "https://web.archive.org/web/20171119111028/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara-pagina-4.html"
-Url36 = "https://web.archive.org/web/20171122062810/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara-pagina-5.html"
+Url35 = "https://web.archive.org/web/20171122235650/https://www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
+Url36 = "https://web.archive.org/web/20171119111019/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara-pagina-2.html"
+Url37 = "https://web.archive.org/web/20171119111023/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara-pagina-3.html"
+Url38 = "https://web.archive.org/web/20171119111028/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara-pagina-4.html"
+Url39 = "https://web.archive.org/web/20171122062810/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara-pagina-5.html"
 
 # Houses
-Url37 = "https://web.archive.org/web/20170707022710/https://inmuebles.mercadolibre.com.mx/casas/venta/jalisco/guadalajara/"
-Url38 = "https://web.archive.org/web/20170707014305/https://inmuebles.mercadolibre.com.mx/casas/renta/jalisco/guadalajara/"
+Url40 = "https://web.archive.org/web/20170707022710/https://inmuebles.mercadolibre.com.mx/casas/venta/jalisco/guadalajara/"
+Url41 = "https://web.archive.org/web/20170707014305/https://inmuebles.mercadolibre.com.mx/casas/renta/jalisco/guadalajara/"
 
 
 # --------------------------Data from 2015--------------------------
-Url39 = "https://web.archive.org/web/20150928075811/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
-Url40 = "https://web.archive.org/web/20150928034046/https://www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
-Url41 = "https://web.archive.org/web/20150926110649/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
-Url42 = "https://web.archive.org/web/20151021063305/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
+Url42 = "https://web.archive.org/web/20150928075811/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
+Url43 = "https://web.archive.org/web/20150928034046/https://www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
+Url44 = "https://web.archive.org/web/20150926110649/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
+Url45 = "https://web.archive.org/web/20151021063305/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
 
 #_Desde_145_NoIndex_True
+Urls = [ globals()[f"Url{i}"] for i in range(12,46) ]
+Urls = [Url14]
 
 def log(message):
     now = datetime.now()
@@ -99,14 +105,16 @@ def log(message):
     T0 = now.strftime("%Y-%m-%d %H:%M:%S")
 
     try:
-        with open(path + "etl.log", "a") as f:
-            f.write("[ " + T0 + " ] " + message + "\n")
+        with open(path + "/etl.log", "a") as f:
+            f.write("[ " + T0 + " ] " + f"{message}" + "\n")
     except FileNotFoundError:
             try:
-                subprocess.run("touch " + path + "etl.log",shell = True)
+                subprocess.run("touch " + path + "/etl.log",shell = True)
+                with open(path + "/etl.log", "a") as f:
+                    f.write("[ " + T0 + " ] " + f"{message}" + "\n")
             except:
                 raise Exception("Fatal error, couldn't find nor create log")
-            return -1
+
     return 0
 
 def Extractor(urls):
@@ -128,23 +136,27 @@ def Extractor(urls):
         domain = u.split('/')[2]
         content = request("get", u)
     
-    if content.status_code == 403:
-        log(f"Error extracting data from {domain}, code 403, IP most likely blocked")
-        return
-    elif content.status_code > 400:
-        log(f"Error extracting data from {domain}, the server returned code {content.status_code}")
-        return
-
-    soup = BeautifulSoup(content.text, 'html.parser')
-    if "web.archive" in domain:
-        data.extend( web_archive_parser(soup, u) )
-    elif "mercadolibre" in domain:
-        data.extend( mercado_libre_parser(soup) )
-    elif "casasyterrenos" in domain:
-        data.extend( casas_y_terrenos_parser(soup) )
-    else:
-        log(f"Error parsing, domain {domain} not implemented")
+        if content.status_code == 403:
+            log(f"Error extracting data from {domain}, code 403, IP most likely blocked")
+            return
+        elif content.status_code > 400:
+            log(f"Error extracting data from {domain}, the server returned code {content.status_code}")
+            return
+        elif content.status_code == 202:
+            log(f"Error extracting data from {domain}, code 202, you are probably rate-limited")
+            continue
     
+        soup = BeautifulSoup(content.text, 'html.parser')
+        if "web.archive" in domain:
+            data.extend( web_archive_parser(soup, u) )
+        elif "mercadolibre" in domain:
+            data.extend( mercado_libre_parser(soup) )
+        elif "casasyterrenos" in domain:
+            data.extend( casas_y_terrenos_parser(soup) )
+        else:
+            log(f"Error parsing, domain {domain} not implemented")
+        
+    log(f"Success extracting data from all the sources")
     return data
     
 def mercado_libre_parser(soup):
@@ -165,12 +177,12 @@ def mercado_libre_parser(soup):
     for house in source:
         house = house["polycard"]
         try:
-            ID = house["unique_id"]
+            ID = house["metadata"]["id"]#house["unique_id"]
             url = house["metadata"]["url"]
             name = house["pictures"]["sanitized_title"]
             
             house = house["components"]
-            for i in len(house):
+            for i in range(len(house)):
                 if house[i]["type"] == 'headline':             
                     info_sale = house[i]["headline"]["text"]
                 elif house[i]["type"] == 'price':                    
@@ -178,7 +190,7 @@ def mercado_libre_parser(soup):
                 elif house[i]["type"] == 'attributes_list':             
                     info_rooms = house[i]["attributes_list"]["texts"]
                 elif house[i]["type"] == 'location':             
-                    info_location = house[i]["locations"]["text"]
+                    info_location = house[i]["location"]["text"].split(",")
         except:
             log("Error extracting data from house with url {url}")
             continue
@@ -200,9 +212,14 @@ def mercado_libre_parser(soup):
         rooms = int(info_rooms[0].split(" ")[0])
         bathrooms = int(info_rooms[1].split(" ")[0]) 
         size = int(info_rooms[2].split(" ")[0])
-        location = info_location.split(",")[0]
         
-        data.append({"ID":ID, "name":name, "price":price, "rooms":rooms, "bathrooms":bathrooms, "size":size, "type":tipo, "sale":sale, "location":location, "year":datetime.now(), "url":url, "permalink":url})
+        location = None
+        for k in range(len(info_location)):
+            if info_location[k].strip().lower() == "guadalajara":
+                location = info_location[k-1].strip()
+                break
+        
+        data.append({"ID":ID, "name":name, "price":price, "rooms":rooms, "bathrooms":bathrooms, "size":size, "type":tipo, "sale":sale, "location":location, "year":int(datetime.now().strftime("%Y")), "url":url, "permalink":url})
     return data    
 
 def casas_y_terrenos_parser(soup):
@@ -266,9 +283,8 @@ def web_archive_parser(soup, url):
         source = json.loads(match.group(1))["initialState"]["results"]
         
         for house in source:
-            name = house["subtitles"]
-            if "local" in name.lower():
-                continue
+            name = house["subtitles"]["item_title"]
+
             if "departamento" in house["subtitles"]["operation"].lower() or "departamento" in house["title"].lower():
                 tipo = "departamento"
             elif "casa" in house["subtitles"]["operation"].lower() or "casa" in house["title"].lower():
@@ -304,8 +320,6 @@ def web_archive_parser(soup, url):
                 size = int(info.split("|")[0].strip().split(" ")[0])
                 rooms = int(info.split("|")[1].strip().split(" ")[0])
                 
-                if "local" in name.lower():
-                    continue
                 if "departamento" in house.find("p",class_="item__info-title").contents[0].lower() or "departamento" in name.lower():
                     tipo = "departamento"
                 elif "casa" in house.find("p",class_="item__info-title").contents[0].lower() or "casa" in name.lower():
@@ -327,7 +341,7 @@ def web_archive_parser(soup, url):
     elif "inmuebles24" in url and year >= 2020:
         baseUrl = "https://web.archive.org"
         names = soup.find_all("h2", class_="postingCardTitle")
-        prices = soup.find_all("div" ,class_="firstPriceContainer")
+        prices = soup.find_all("div" ,class_="firstPriceContainer") if len(soup.find_all("div" ,class_="firstPriceContainer")) > 0 else soup.find_all("span", class_ = "firstPrice")
         sizes = soup.find_all("div", class_="postingCardRow postingCardMainFeaturesBlock go-to-posting")
         locations = soup.find_all("span", class_ ="postingCardLocation")
         
@@ -336,7 +350,10 @@ def web_archive_parser(soup, url):
             permalink = baseUrl + names[j].find("a", class_="go-to-posting")["href"]
             ID = str(permalink.split(".")[-2].split("-")[-1])
             # needs converting to int:
-            price = prices[j].find("span", class_="firstPrice").contents[0].strip("\t \n").split(" ")[-1]
+            try:
+                price = prices[j].find("span", class_="firstPrice").contents[0].strip("\t \n").split(" ")[-1]
+            except AttributeError:
+                price = prices[j]["data-price"].split(" ")[-1]
 
             if "casas" in url.lower() or "casa" in name.lower():
                 tipo = "casa"
@@ -431,5 +448,112 @@ def web_archive_parser(soup, url):
                 
     return data
 
+def Transformer(extracted):
+    '''
+    Pipeline stage to transform data to a data analytics ready form.
+    removes irrelevant entries, like non-residential rent, ensures correct data types, etc 
 
-#         transform    if size < 50 or rooms == None: delete            if "local" in name.lower(): delete
+    Parameters
+    ----------
+    data : A list of dictionaries returned by Extractor()
+
+    Returns
+    -------
+    A dictionary with all the data ready to be saved to the Db, pending verification of uniqueness.
+
+    '''
+    
+    data = []
+    for index in range(len(extracted)):
+        house = extracted[index]
+        
+        # Remove entry if it is for bussiness only, or only one room, or number of rooms is unknown
+        if "local" in house["name"].strip().lower() or house["size"] <= 45 or house["rooms"] == None:
+            continue
+        
+        # Capitalize location
+        house["location"] = house["location"].upper()
+        
+        # Convert price to int                
+        house["price"] = int(str(house["price"]).replace(",",""))
+        
+        data.append(house)
+    return data
+
+def Loader(data, dbName):
+    '''
+    Pipeline stage to load data to a database.
+    Prevents duplicates from being written.
+    Logs information to the etl.log
+
+    Parameters
+    ----------
+    data : A list of dictionaries returned by Transformer()
+
+    '''
+    import ibm_db
+    import ibm_db_dbi
+    counter = 0
+    dbName = [dbName]
+    PATH = os.getcwd()
+    try:
+        with open("Credentials.txt", 'r') as f:
+           credentials = json.loads(f.read())
+        HOST = credentials["connection"]["db2"]["hosts"][0]["hostname"]
+        PORT = credentials["connection"]["db2"]["hosts"][0]["port"]    
+        USER = credentials["connection"]["db2"]["authentication"]["username"]
+        PASS = credentials["connection"]["db2"]["authentication"]["password"]
+        DB = credentials["connection"]["db2"]["database"]
+        
+    except FileNotFoundError:
+        log(f"[Error] - the credentials to connect to IBM db2 were not provided in Credentials.txt")
+
+    except:
+        log(f"[Error] - Could not extract credentials from Credentials.txt. You need to create service credentials on the db2 website and copy the long text as is.")
+        
+    STRING = (
+        f"DATABASE={DB};"
+        f"HOSTNAME={HOST};"
+        f"PORT={PORT};"
+        f"PROTOCOL=TCPIP;"
+        f"UID={USER};"
+        f"PWD={PASS};"
+        "SECURITY=SSL"
+        )
+   
+    try:
+        ibm_conn = ibm_db.connect(STRING,'','')
+        conn = ibm_db_dbi.Connection(ibm_conn)
+        cursor = conn.cursor()
+    except Exception as e:
+        log(f"[Error] - Couldn't connect to database: {e}")
+    
+    SELECT = "SELECT HouseID FROM ?"
+    INSERT = "INSERT INTO ? (HouseID, Name, Price, Rooms, Bathrooms, Size, Type, Sale, Location, Year, Url, Permalink) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+    ibm_db.prepare(ibm_conn, SELECT)
+    cursor.execute(SELECT, dbName)
+    IDs = cursor.fetchall()
+    
+    for house in data:
+        if house["ID"] in IDs:
+            continue
+        try:
+            prepInsert = ibm_db.prepare(ibm_conn, INSERT)
+            ibm_db.exec_immediate(prepInsert, dbName.extend( list(house.values()) ))
+        except Exception as e:
+            log(f"[Error] - Couldn't write entry to connected database ({dbName[0]}): {e}")
+            ibm_db.close(ibm_conn)
+            return
+        else:
+            counter = counter + 1
+            subprocess.run(f"touch {PATH}/History.sql", shell = True)
+            with open(PATH + "/History.sql",'a') as f:
+                f.write(f"INSERT INTO {dbName[0]} (HouseID, Name, Price, Rooms, Bathrooms, Size, Type, Sale, Location, Year, Url, Permalink) VALUES {tuple(house.values())}")
+        
+    log(f"[Success] - Saved {counter} unique new entries to IBM db2 out of {len(Transformed)} valid extracted data.")
+    ibm_db.close(ibm_conn)
+    return
+
+Extracted = Extractor(Urls)
+Transformed = Transformer(Extracted)
+Loader(Transformed, dbName)
