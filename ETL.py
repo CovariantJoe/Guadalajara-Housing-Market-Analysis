@@ -96,7 +96,7 @@ Url44 = "https://web.archive.org/web/20150926110649/https://www.inmuebles24.com/
 Url45 = "https://web.archive.org/web/20151021063305/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
 
 #_Desde_145_NoIndex_True
-Urls = [ globals()[f"Url{i}"] for i in range(1,46) ]
+Urls = [ globals()[f"Url{i}"] for i in range(30,42) ]
 #Urls = [Url14]
 
 def log(message):
@@ -134,32 +134,36 @@ def Extractor(urls):
 
     for u in urls:
         domain = u.split('/')[2]
-        content = request("get", u)
-    
-        if content.status_code == 403:
-            log(f"[Error] - extracting data from {domain}, code 403, IP most likely blocked")
-            return
-        elif content.status_code > 400:
-            log(f"[Error] - extracting data from {domain} the server returned code {content.status_code}")
-            return
-        elif content.status_code == 202:
-            log(f"[Warn] - extracting data from {domain}, code 202, you are probably rate-limited, skipping {u}")
+        try:
+            content = request("get", u)
+        except Exception as e:
+            log(f"[Error] - extracting data from {u}: {e}")
             continue
+        else:
+            if content.status_code == 403:
+                log(f"[Error] - extracting data from {domain}, code 403, IP most likely blocked or programs like this one blocked")
+                continue
+            elif content.status_code > 400:
+                log(f"[Error] - extracting data from {domain} the server returned code {content.status_code}")
+                continue
+            elif content.status_code == 202:
+                log(f"[Warn] - extracting data from {domain}, code 202, you are probably rate-limited, skipping {u}")
+                continue
     
         soup = BeautifulSoup(content.text, 'html.parser')
         if "web.archive" in domain:
             data.extend( web_archive_parser(soup, u) )
         elif "mercadolibre" in domain:
-            data.extend( mercado_libre_parser(soup) )
+            data.extend( mercado_libre_parser(soup, u) )
         elif "casasyterrenos" in domain:
             data.extend( casas_y_terrenos_parser(soup) )
         else:
-            log(f"[Error] - parsing, domain {domain} not implemented")
+            log(f"[Error] - scanning domain, {domain} not implemented")
         
-    log(f"[Info] - Success extracting data from all the sources")
+    log(f"[Info] - Success extracting {len(data)} data from valid sources")
     return data
     
-def mercado_libre_parser(soup):
+def mercado_libre_parser(soup, url):
     '''
     Function to parse the HTML returned by Mercado Libre with JSON
 
@@ -202,9 +206,9 @@ def mercado_libre_parser(soup):
         else:
             tipo = "na"
             
-        if "renta" in info_sale.lower():
+        if "renta" in info_sale.lower() or "renta" in url:
             sale = "rent"
-        elif "venta" in info_sale.lower():
+        elif "venta" in info_sale.lower() or "venta" in url:
             sale = "sale"
         else:
             sale = "na"
@@ -212,7 +216,7 @@ def mercado_libre_parser(soup):
         bathrooms = None; size = None; rooms = None
         for item in info_rooms:
             if "recámaras" in item:
-                rooms = int(item.split(" ")[0])
+                rooms = item.split(" ")[0]
             elif "construidos" in item:
                 size = item.split(" ")[0]
             elif "baño" in item:             
@@ -311,7 +315,7 @@ def web_archive_parser(soup, url):
                     location = info_location[j-1].strip()
                     break
                 
-            data.append({"ID":house["id"], "name": name,"price": house["price"]["amount"],"rooms":int(house["descriptions"][1]["label"].split(" ")[0]),"bathrooms":None,"size":int(house["descriptions"][0]["label"].split(" ")[0]),"type":tipo,"sale":sale,"location":location, "year": year, "url":url, "permalink": house["permalink"]})
+            data.append({"ID":house["id"], "name": name,"price": house["price"]["amount"],"rooms":house["descriptions"][1]["label"].split(" ")[0],"bathrooms":None,"size":house["descriptions"][0]["label"].split(" ")[0],"type":tipo,"sale":sale,"location":location, "year": year, "url":url, "permalink": house["permalink"]})
     
     # Section to extract data from Mercado libre's website format before 2021
     elif "mercadolibre" in url:
@@ -325,7 +329,10 @@ def web_archive_parser(soup, url):
                 price = house.find("span", class_="price-fraction").contents[0] # String, need to fix
                 info = house.find("div",class_="item__attrs").contents[0]
                 size = info.split("|")[0].strip().split(" ")[0]
-                rooms = int(info.split("|")[1].strip().split(" ")[0])
+                try:
+                    rooms = info.split("|")[1].strip().split(" ")[0]
+                except IndexError:
+                    rooms = None
                 
                 if "departamento" in house.find("p",class_="item__info-title").contents[0].lower() or "departamento" in name.lower():
                     tipo = "departamento"
@@ -380,7 +387,7 @@ def web_archive_parser(soup, url):
             rooms = None; size = None; bathrooms = None
             for item in sizes[j].find_all("li"):
                 if "Bedrooms" in str(item.contents[1]):
-                    rooms = int(item.contents[2].strip("\t \n").split(" ")[0])
+                    rooms = item.contents[2].strip("\t \n").split(" ")[0]
                 elif "Area" in str(item.contents[1]):
                     size = item.contents[2].strip("\t \n").split(" ")[0]
                 elif "Bathrooms" in str(item.contents[1]):
@@ -395,9 +402,14 @@ def web_archive_parser(soup, url):
         classes = ["post-titulo","price price-clasificado","bottom-info","post-location dl-aviso-link"] if year >= 2017 else ["post-title","prize","post-text-pay", "noexiste"]        
         baseUrl = "https://web.archive.org"
         names = soup.find_all("h4",class_= classes[0])
-        prices = soup.find_all("p", class_= classes[1])
+        price_classes = classes[1].split()
+        prices = soup.find_all("p", class_=lambda x: x and all(c in x for c in price_classes))
         sizes = soup.find_all("div", class_= classes[2])
         locations = soup.find_all("div" ,class_= classes[3])
+        
+        if len(names) != len(prices):
+            log(f"[Error] - extracting data from {url}, there are {len(names)} properties and {len(prices)} prices, skipping all the data")
+            return []
         
         for j in range(len(names)):
             name = names[j].find("a")["title"]
@@ -405,8 +417,8 @@ def web_archive_parser(soup, url):
             ID = str(permalink.split(".")[-2].split("-")[-1])
             try:
                 price = prices[j].find("span").contents[0].split(" ")[-1]
-            except:
-                a = 1
+            except AttributeError:
+                continue
             
             if price == "Desde":
                 price = prices[j].find("span", class_="precio-valor").contents[0].split(" ")[-1]
@@ -431,7 +443,7 @@ def web_archive_parser(soup, url):
                 location = locations[j].find("span").contents[0].split(",")[0]
                 for item in sizes[j].find_all("li"):
                     if "recámaras" in str(item.contents).lower():
-                        rooms = int(item.contents[0].strip("\t \n").split(" ")[0])
+                        rooms = item.contents[0].strip("\t \n").split(" ")[0]
                     elif "construidos" in str(item.contents[1]).lower() or "totales" in str(item.contents[1]).lower():
                         size = item.contents[0].strip("\t \n").split(" ")[0]
                     elif "baños" in str(item.contents[1]).lower():
@@ -443,9 +455,9 @@ def web_archive_parser(soup, url):
                         continue
                     elif item["class"][0] == "misc-habitaciones":
                         try:
-                            rooms = int(item.contents[0].contents[0])
+                            rooms = item.contents[0].contents[0]
                         except AttributeError:
-                            rooms = int(item.contents[0].strip("\n \t"))
+                            rooms = item.contents[0].strip("\n \t")
                     elif item["class"][0] == "misc-m2cubiertos":
                         try:
                             size = item.contents[0].contents[0]
@@ -460,7 +472,7 @@ def web_archive_parser(soup, url):
                 
     return data
 
-def Transformer(extracted):
+def Transformer(Extracted):
     '''
     Pipeline stage to transform data to a data analytics ready form.
     removes irrelevant entries, like non-residential rent, ensures correct data types, etc 
@@ -477,12 +489,9 @@ def Transformer(extracted):
     data = []
     repeated = []
     
-    for index in range(len(extracted)):
-        house = extracted[index]
+    for index in range(len(Extracted)):
+        house = Extracted[index]
 
-        # Remove entry if it is for bussiness only, or only one room, or number of rooms/size is unknown
-        if "local" in house["name"].strip().lower() or house["size"] <= 45 or house["rooms"] == None or house["size"] == None:
-            continue
         
         # Remove entry if it is repeated in the same batch, keep only one repetition
         if repeated.count(house["ID"]) < 1:
@@ -490,14 +499,37 @@ def Transformer(extracted):
         else:
             continue
         
-        # Capitalize location
-        house["location"] = house["location"].upper()
+        try:
+            # Capitalize location and sale
+            if house["year"] > 2015:
+                house["location"] = house["location"].upper()
+            house["sale"] = house["sale"].upper()
+            
+            # Translate
+            if "casa" in house["type"].lower():
+                house["type"] = "HOUSE"
+            elif "departamento" in house["type"].lower():
+                house["type"] = "APARTMENT"
+            else:
+                continue
+            
+            # Convert price to int                
+            house["price"] = int(str(house["price"]).replace(",",""))
+            
+            # Convert rooms to int, "None" rooms will be removed           
+            house["rooms"] = int(str(house["rooms"]).replace(",",""))
+            
+            # Convert size to int, "None" size will be removed
+            if isinstance(house["size"],float):
+                house["size"] = int(house["size"])
+            else:
+                house["size"] = int(str(house["size"]).replace(",",""))
+        except:
+            continue
         
-        # Convert price to int                
-        house["price"] = int(str(house["price"]).replace(",",""))
-        
-        # Convert rooms to int           
-        house["rooms"] = int(str(house["rooms"]).replace(",",""))
+        # Remove entry if it is for bussiness only, or only one room, or no price
+        if ("local" in house["name"].strip().lower() and house["type"].lower() not in house["name"].strip().lower()) or house["size"] < 40 or house["rooms"] == 0 or house["price"] < 1:
+            continue
         
         data.append(house)
     return data
@@ -529,9 +561,11 @@ def Loader(data, Credentials):
         
     except FileNotFoundError:
         log(f"[Error] - the credentials txt file to connect to IBM db2 were not found in {Credentials}")
+        return
 
     except:
         log(f"[Error] - Could not extract credentials from {Credentials}. You need to create service credentials on the db2 website and copy the long text as is.")
+        return
         
     STRING = (
         f"DATABASE={DB};"
@@ -549,6 +583,7 @@ def Loader(data, Credentials):
         cursor = conn.cursor()
     except Exception as e:
         log(f"[Error] - Couldn't connect to database: {e}")
+        return
     
     SELECT = "SELECT HouseID FROM Housing"
     INSERT = "INSERT INTO Housing (HouseID, Name, Price, Rooms, Bathrooms, Size, Type, Sale, Location, Year, Url, Permalink) VALUES (?,?,?,?,?,?,?,?,?,?,?,?);"
@@ -562,10 +597,11 @@ def Loader(data, Credentials):
             prepInsert = ibm_db.prepare(ibm_conn, INSERT)
             ibm_db.execute(prepInsert, tuple(house.values() ))
         except Exception as e:
-            log(f"[Error] - Couldn't write entry to connected database table (Housing): {e}")
             ibm_db.rollback(ibm_conn)
-            ibm_db.close(ibm_conn)
-            return
+            print(house.values())
+            if "a row does not satisfy the check constraint" not in str(e):
+                log(f"[Error] - Couldn't write entry to connected database table (Housing): {e}")
+            continue
         else:
             ibm_db.commit(ibm_conn)
             counter = counter + 1
@@ -573,7 +609,7 @@ def Loader(data, Credentials):
             with open(PATH + "/History.sql",'a') as f:
                 f.write(f"INSERT INTO Housing (HouseID, Name, Price, Rooms, Bathrooms, Size, Type, Sale, Location, Year, Url, Permalink) VALUES {tuple(house.values())}; \n")
         
-    log(f"[Info] - Success Saved {counter} unique new entries to IBM db2 out of {len(Transformed)} valid extracted data.")
+    log(f"[Info] - Success Saving {counter} unique new entries to IBM db2 out of {len(Transformed)} valid, transformed data.")
     ibm_db.close(ibm_conn)
     return
 
@@ -586,7 +622,7 @@ Loader(Transformed, Credentials)
 '''
 CREATE TABLE Housing (
 HouseID VARCHAR(30) NOT NULL PRIMARY KEY,
-Name VARCHAR(250) NOT NULL UNIQUE,
+Name VARCHAR(250) NOT NULL,
 Price INTEGER NOT NULL CHECK(Price > 0),
 Rooms SMALLINT NOT NULL ,
 Bathrooms SMALLINT,
