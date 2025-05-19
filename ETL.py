@@ -1,7 +1,7 @@
 """
 @author: Covariant Joe
 
-Apache Airflow pipeline to web scrape house market data in Guadalajara.
+Functions to add to Apache Airflow pipeline to web scrape house market data in Guadalajara.
 Performs the ETL process, saving the data to a IBM db2 warehouse and an inflation data mart.
 It prevents duplicates from being written to the db.
 
@@ -12,6 +12,7 @@ Credentials need to be provided in Credentials.txt to connect remotely to a IBM 
 In order to run this program ibm_db needs to be installed, using pip for example.
 """
 
+import time
 import re
 from bs4 import BeautifulSoup
 from requests import request
@@ -21,7 +22,6 @@ import subprocess
 import json
 
 # ------------- Configure -------------
-N_PAGES = 1  # How many pages to request per url, only applies to new data
 Credentials = "Credentials.txt" # Path to file with IBM db2 login/connection credentials
 #------------- ------------- -------------
 
@@ -84,20 +84,45 @@ Url37 = "https://web.archive.org/web/20171119111023/http://www.inmuebles24.com/d
 Url38 = "https://web.archive.org/web/20171119111028/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara-pagina-4.html"
 Url39 = "https://web.archive.org/web/20171122062810/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara-pagina-5.html"
 
-# Houses
 Url40 = "https://web.archive.org/web/20170707022710/https://inmuebles.mercadolibre.com.mx/casas/venta/jalisco/guadalajara/"
 Url41 = "https://web.archive.org/web/20170707014305/https://inmuebles.mercadolibre.com.mx/casas/renta/jalisco/guadalajara/"
 
+# --------------------------Data from 2016--------------------------
+Url42 = "https://web.archive.org/web/20160310052802/www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
+Url43 = "https://web.archive.org/web/20160307002542/www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
+Url44 = "https://web.archive.org/web/20160513061027/www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
+Url45 = "https://web.archive.org/web/20160511220424/www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
+Url46 = "https://web.archive.org/web/20160716072356/www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
+Url47 = "https://web.archive.org/web/20160716084233/www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
+Url48 = "https://web.archive.org/web/20161011145610/www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
+Url49 = "https://web.archive.org/web/20161011202858/www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
+
+Url50 = "https://web.archive.org/web/20160305023115/www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
+Url51 =  "https://web.archive.org/web/20160307002305/www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
+Url52 =  "https://web.archive.org/web/20160405164559/www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
+Url53 =  "https://web.archive.org/web/20160407090314/www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
+Url54 =  "https://web.archive.org/web/20160512003735/www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
+Url55 =  "https://web.archive.org/web/20160508064440/www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
+Url56 =  "https://web.archive.org/web/20160713124118/www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
+Url57 =  "https://web.archive.org/web/20160720204550/www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
+Url58 =  "https://web.archive.org/web/20161013133724/www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
+Url59 =  "https://web.archive.org/web/20161013063056/www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
 
 # --------------------------Data from 2015--------------------------
-Url42 = "https://web.archive.org/web/20150928075811/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
-Url43 = "https://web.archive.org/web/20150928034046/https://www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
-Url44 = "https://web.archive.org/web/20150926110649/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
-Url45 = "https://web.archive.org/web/20151021063305/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
+Url60 = "https://web.archive.org/web/20150928075811/http://www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
+Url61 = "https://web.archive.org/web/20150928034046/https://www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
+Url62 = "https://web.archive.org/web/20150926110649/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
+Url63 = "https://web.archive.org/web/20151021063305/http://www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
+Url64 = "https://web.archive.org/web/20151230150006/www.inmuebles24.com/casas-en-renta-en-guadalajara.html"
+Url65 = "https://web.archive.org/web/20151230170106/www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
+Url66 = "https://web.archive.org/web/20150819080049/www.inmuebles24.com/departamentos-en-renta-en-guadalajara.html"
+Url67 = "https://web.archive.org/web/20151208005800/www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
+Url68 = "https://web.archive.org/web/20151202073008/www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
 
 #_Desde_145_NoIndex_True
-Urls = [ globals()[f"Url{i}"] for i in range(30,42) ]
-#Urls = [Url14]
+Urls = [ globals()[f"Url{i}"] for i in range(62,69) ]
+#Urls = [Url47]
+
 
 def log(message):
     now = datetime.now()
@@ -137,7 +162,10 @@ def Extractor(urls):
         try:
             content = request("get", u)
         except Exception as e:
-            log(f"[Error] - extracting data from {u}: {e}")
+            if "Failed to establish a new connection: [Errno 111] Connection refused" in str(e):
+                log(f"[Error] - extracting data from {u}: Connection refused, you're most likely rate-limited")                
+            else:
+                log(f"[Error] - extracting data from {u}: {e}")
             continue
         else:
             if content.status_code == 403:
@@ -156,7 +184,7 @@ def Extractor(urls):
         elif "mercadolibre" in domain:
             data.extend( mercado_libre_parser(soup, u) )
         elif "casasyterrenos" in domain:
-            data.extend( casas_y_terrenos_parser(soup) )
+            data.extend( casas_y_terrenos_parser(soup, u) )
         else:
             log(f"[Error] - scanning domain, {domain} not implemented")
         
@@ -182,7 +210,7 @@ def mercado_libre_parser(soup, url):
         house = house["polycard"]
         try:
             ID = house["metadata"]["id"]#house["unique_id"]
-            url = house["metadata"]["url"]
+            permalink = house["metadata"]["url"]
             name = house["pictures"]["sanitized_title"]
             
             house = house["components"]
@@ -228,10 +256,10 @@ def mercado_libre_parser(soup, url):
                 location = info_location[k-1].strip()
                 break
         
-        data.append({"ID":ID, "name":name, "price":price, "rooms":rooms, "bathrooms":bathrooms, "size":size, "type":tipo, "sale":sale, "location":location, "year":int(datetime.now().strftime("%Y")), "url":url, "permalink":url})
+        data.append({"ID":ID, "name":name, "price":price, "rooms":rooms, "bathrooms":bathrooms, "size":size, "type":tipo, "sale":sale, "location":location, "year":int(datetime.now().strftime("%Y")), "url":url, "permalink":permalink})
     return data    
 
-def casas_y_terrenos_parser(soup):
+def casas_y_terrenos_parser(soup, url):
     '''
     Function to parse the HTML returned by casas y terrenos with JSON
 
@@ -250,7 +278,7 @@ def casas_y_terrenos_parser(soup):
     source = source["propertyData"]["properties"]
     
     for house in source:
-        url = "www.casasyterrenos.com" + house["canonical"]
+        permalink = "www.casasyterrenos.com" + house["canonical"]
         if bool(house["isSale"]):
             price = house["priceSale"]
             sale = "sale"
@@ -259,7 +287,7 @@ def casas_y_terrenos_parser(soup):
             sale = "rent"
         else:
             continue
-        data.append({"ID":str(house["id"]), "name": house["name"], "price":price, "rooms": house["rooms"], "bathrooms":house["bathrooms"], "size":house["construction"], "type":tipo, "sale":sale, "location":house["neighborhood"], "year": int(house["lastUpdate"][:4]), "url":url, "permalink":url })
+        data.append({"ID":str(house["id"]), "name": house["name"], "price":price, "rooms": house["rooms"], "bathrooms":house["bathrooms"], "size":house["construction"], "type":tipo, "sale":sale, "location":house["neighborhood"], "year": int(house["lastUpdate"][:4]), "url":url, "permalink":permalink })
     return  data  
 
 def web_archive_parser(soup, url):
@@ -404,6 +432,10 @@ def web_archive_parser(soup, url):
         names = soup.find_all("h4",class_= classes[0])
         price_classes = classes[1].split()
         prices = soup.find_all("p", class_=lambda x: x and all(c in x for c in price_classes))
+        if len(prices) == 0:
+            price_classes = "price".split()
+            prices = soup.find_all("p", class_=lambda x: x and all(c in x for c in price_classes))
+            
         sizes = soup.find_all("div", class_= classes[2])
         locations = soup.find_all("div" ,class_= classes[3])
         
@@ -420,7 +452,7 @@ def web_archive_parser(soup, url):
             except AttributeError:
                 continue
             
-            if price == "Desde":
+            if price == "Desde" or price == "\t\t" or price == "Venta":
                 price = prices[j].find("span", class_="precio-valor").contents[0].split(" ")[-1]
             
             
@@ -458,18 +490,33 @@ def web_archive_parser(soup, url):
                             rooms = item.contents[0].contents[0]
                         except AttributeError:
                             rooms = item.contents[0].strip("\n \t")
-                    elif item["class"][0] == "misc-m2cubiertos":
+                    elif item["class"][0] == "misc-m2totales":
                         try:
                             size = item.contents[0].contents[0]
                         except AttributeError:
                             size = item.contents[0].strip("\n \t").split(" ")[0]
+                    elif item["class"][0] == "misc-m2cubiertos":
+                        size = item.contents[0].strip("\n \t").split(" ")[0]
+                            
                     elif item["class"][0] == "misc-metros":
-                        size = item.contents[2].contents[0]
+                        size = item.contents[2].contents[0]                    
                     elif item["class"][0] == "misc-banos":
                         bathrooms = int(item.contents[0])
+                        
+                    try:
+                        int(str(size).replace(",",""))
+                    except ValueError:
+                        for subitem in item.contents:
+                            try:
+                                size = int(str(subitem.contents[0]).replace(",",""))
+                            except:
+                                continue
+                            else:
+                                break
 
             data.append({"ID":ID, "name":name, "price":price, "rooms":rooms, "bathrooms":bathrooms, "size":size, "type":tipo, "sale":sale, "location":location, "year":year, "url":url, "permalink":permalink})
-                
+    
+    time.sleep(3.5) # Try to avoid rate-limiting
     return data
 
 def Transformer(Extracted):
@@ -486,9 +533,12 @@ def Transformer(Extracted):
     A dictionary with all the data ready to be saved to the Db, pending verification of uniqueness.
 
     '''
+
     data = []
     repeated = []
+    ACCENTS = {"Á":"A","É":"E","Í":"I","Ó":"O","Ú":"U"}
     
+#    import pdb; pdb.set_trace()
     for index in range(len(Extracted)):
         house = Extracted[index]
 
@@ -500,9 +550,40 @@ def Transformer(Extracted):
             continue
         
         try:
-            # Capitalize location and sale
-            if house["year"] > 2015:
+            # Capitalize location and make it consistent with other entries
+            if house["year"] > 2016:
                 house["location"] = house["location"].upper()
+                loc = house["location"].split(" ")
+                s = ""
+                for j in range(len(loc)):
+                    word = loc[j]
+                    try:
+                        int(word)
+                    except ValueError:
+                        pass
+                    else:
+                        if j > 0:
+                            continue
+                        
+                    if word == "SECC":
+                        word = "SECCION"
+                    elif word.endswith("."):
+                        word = word[:-1]
+                        
+                    if word == "FRACCIONAMIENTO" or word == "BARRIO" or word == "COLONIA" or word == "NO" or word == "NUMERO" or word == "NÚMERO" or word == "CALLE" or word == "AVENIDA" or "-" in word or "/" in word or "," in word:
+                        continue
+                    else:
+                        s = s + " " + word
+                        
+                s = re.sub(r'[ÁÉÍÓÚ]', lambda m: ACCENTS[m.group()], s)
+                house["location"] = s.strip(" ")
+                
+            if house["location"] == "" or house["location"] == None:
+                house["location"] = "LOCATION NOT SPECIFIED"
+            elif house["location"] == "LAFAYETTE":
+                house["location"] = "CHAPULTEPEC"
+                
+            # Capitalize sale
             house["sale"] = house["sale"].upper()
             
             # Translate
@@ -528,7 +609,9 @@ def Transformer(Extracted):
             continue
         
         # Remove entry if it is for bussiness only, or only one room, or no price
-        if ("local" in house["name"].strip().lower() and house["type"].lower() not in house["name"].strip().lower()) or house["size"] < 40 or house["rooms"] == 0 or house["price"] < 1:
+        if ("local" in house["name"].strip().lower() and house["type"].lower() not in house["name"].strip().lower()) or house["size"] < 40 or house["rooms"] == 0 or house["price"] <= 500:
+            continue
+        if "renta" in house["name"].strip().lower() and "venta" in house["name"].strip().lower():
             continue
         
         data.append(house)
@@ -613,25 +696,7 @@ def Loader(data, Credentials):
     ibm_db.close(ibm_conn)
     return
 
-Extracted = Extractor(Urls)
-Transformed = Transformer(Extracted)
-#Transformed = [{'ID': '53068734', 'name': 'Hermosa Casa de Una Planta', 'price': 28000, 'rooms': 5, 'bathrooms': 4, 'size': 351, 'type': 'casa', 'sale': 'rent', 'location': 'FRACCIONAMIENTO VALLARTA NORTE', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/hermosa-casa-de-una-planta-53068734.html'}, {'ID': '58359930', 'name': 'Residencia Enorme en Venta a 3 Cuadras de Minerva', 'price': 80000, 'rooms': 10, 'bathrooms': 5, 'size': 600, 'type': 'casa', 'sale': 'rent', 'location': 'VALLARTA PONIENTE', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/residencia-enorme-en-venta-a-3-cuadras-de-minerva-58359930.html'}, {'ID': '59724852', 'name': 'Casa 3hab + Estudio, 2 Autos Remodelada en Privada', 'price': 25000, 'rooms': 3, 'bathrooms': 2, 'size': 120, 'type': 'casa', 'sale': 'rent', 'location': 'LAFAYETTE', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-3hab-estudio-2-autos-remodelada-en-privada-59724852.html'}, {'ID': '58021334', 'name': 'Casa en Renta Regidores, Ayuntamiento', 'price': 27000, 'rooms': 5, 'bathrooms': 2, 'size': 300, 'type': 'casa', 'sale': 'rent', 'location': 'AYUNTAMIENTO', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-en-renta-regidores-ayuntamiento-58021334.html'}, {'ID': '59478923', 'name': 'Casa Amueblada en Calle Marsella, Colonia Obrera Chapultepec', 'price': 20000, 'rooms': 3, 'bathrooms': 2, 'size': 140, 'type': 'casa', 'sale': 'rent', 'location': 'AMERICANA', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-amueblada-en-calle-marsella-colonia-obrera-59478923.html'}, {'ID': '59903838', 'name': 'Casa en Renta Zona de Galería del Calzado', 'price': 22000, 'rooms': 3, 'bathrooms': 2, 'size': 119, 'type': 'casa', 'sale': 'rent', 'location': 'VALLARTA PONIENTE', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-en-renta-zona-de-galeria-del-calzado-59903838.html'}, {'ID': '56886785', 'name': 'Casa en Renta Carlos Mérida, Colinas de La Normal', 'price': 16500, 'rooms': 3, 'bathrooms': 1, 'size': 170, 'type': 'casa', 'sale': 'rent', 'location': 'COLINAS DE LA NORMAL', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-en-renta-carlos-merida-colinas-de-la-normal-56886785.html'}, {'ID': '58447219', 'name': 'Hermosa Casa en Renta', 'price': 20000, 'rooms': 4, 'bathrooms': 2, 'size': 220, 'type': 'casa', 'sale': 'rent', 'location': '8 DE JULIO', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/hermosa-casa-en-renta-58447219.html'}, {'ID': '54174688', 'name': 'Se Renta Casa en Jardines del Bosque, Av Niños Heroes', 'price': 18500, 'rooms': 4, 'bathrooms': 3, 'size': 250, 'type': 'casa', 'sale': 'rent', 'location': 'JARDINES DEL BOSQUE NORTE', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/se-renta-casa-en-jardines-del-bosque-av-ninos-heroes-54174688.html'}, {'ID': '57533414', 'name': 'Casa en Renta Calle Ramón Blancarte, Mirador', 'price': 9000, 'rooms': 3, 'bathrooms': 1, 'size': 95, 'type': 'casa', 'sale': 'rent', 'location': 'EL MIRADOR', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-en-renta-calle-ramon-blancarte-mirador-57533414.html'}, {'ID': '59472670', 'name': 'A 20 m de Av Lopez Mateos', 'price': 29500, 'rooms': 6, 'bathrooms': None, 'size': 300, 'type': 'casa', 'sale': 'rent', 'location': 'CHAPALITA', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/a-20-m-de-av-lopez-mateos-59472670.html'}, {'ID': '58430042', 'name': 'Renta de Casa Esquina en Av México', 'price': 59000, 'rooms': 8, 'bathrooms': 6, 'size': 518, 'type': 'casa', 'sale': 'rent', 'location': 'ARCOS VALLARTA', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/renta-de-casa-esquina-en-av-mexico-58430042.html'}, {'ID': '59696973', 'name': 'Casa en Renta en Colomos Providencia', 'price': 20000, 'rooms': 5, 'bathrooms': 4, 'size': 252, 'type': 'casa', 'sale': 'rent', 'location': 'FRACCIONAMIENTO COLOMOS PROVIDENCIA', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-en-renta-en-colomos-providencia-59696973.html'}, {'ID': '59882819', 'name': 'Casa Renta en El Country Club un Nivel', 'price': 22900, 'rooms': 3, 'bathrooms': 2, 'size': 225, 'type': 'casa', 'sale': 'rent', 'location': 'COUNTRY CLUB', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-renta-en-el-country-club-un-nivel-59882819.html'}, {'ID': '59580864', 'name': 'Casa Para Oficina Ubicadisima en Renta - Jardines del Bosque - Calle El Rosario', 'price': 25000, 'rooms': 4, 'bathrooms': 3, 'size': 189, 'type': 'casa', 'sale': 'rent', 'location': 'JARDINES DEL BOSQUE NORTE', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-para-oficina-ubicadisima-en-renta-jardines-del-59580864.html'}, {'ID': '59905734', 'name': 'Casa en Renta Col. Americana', 'price': 35000, 'rooms': 4, 'bathrooms': 3, 'size': 697, 'type': 'casa', 'sale': 'rent', 'location': 'AMERICANA', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-en-renta-col.-americana-59905734.html'}, {'ID': '59429614', 'name': 'Casa en Renta en Medrano', 'price': 10000, 'rooms': 4, 'bathrooms': 2, 'size': 185, 'type': 'casa', 'sale': 'rent', 'location': 'MEDRANO', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-en-renta-en-medrano-59429614.html'}, {'ID': '59385958', 'name': 'Casa en Venta / Renta Santa Tere por Enrique Diaz de León', 'price': 26700, 'rooms': 8, 'bathrooms': 4, 'size': 253, 'type': 'casa', 'sale': 'rent', 'location': 'BARRIO SANTA TERESITA', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-en-venta-renta-santa-tere-por-enrique-diaz-de-59385958.html'}, {'ID': '57585790', 'name': 'Colonia Americana Fines Comerciales', 'price': 28000, 'rooms': 2, 'bathrooms': 3, 'size': 390, 'type': 'casa', 'sale': 'rent', 'location': 'AMERICANA', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/colonia-americana-fines-comerciales-57585790.html'}, {'ID': '59181159', 'name': 'Amplia Casa en El Corazón de Santa Tere', 'price': 12000, 'rooms': 4, 'bathrooms': 2, 'size': 200, 'type': 'casa', 'sale': 'rent', 'location': 'BARRIO SANTA TERESITA', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/amplia-casa-en-el-corazon-de-santa-tere-59181159.html'}, {'ID': '58642917', 'name': 'Casa en Renta Providencia Calle Florencia', 'price': 35000, 'rooms': 4, 'bathrooms': 2, 'size': 350, 'type': 'casa', 'sale': 'rent', 'location': 'PROVIDENCIA', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-en-renta-providencia-calle-florencia-58642917.html'}, {'ID': '58260644', 'name': 'Casa Zona Chapalita, Expo Gdl. Hotel Riu', 'price': 35000, 'rooms': 5, 'bathrooms': 2, 'size': 200, 'type': 'casa', 'sale': 'rent', 'location': 'CHAPALITA', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-zona-chapalita-expo-gdl.-hotel-riu-58260644.html'}, {'ID': '59720890', 'name': 'Casa en Renta en San Juan Bosco', 'price': 6700, 'rooms': 2, 'bathrooms': 1, 'size': 150, 'type': 'casa', 'sale': 'rent', 'location': 'BARRIO SAN JUAN BOSCO', 'year': 2020, 'url': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/casas-en-renta-en-guadalajara.html', 'permalink': 'https://web.archive.org/web/20201202221017/https://www.inmuebles24.com/propiedades/casa-en-renta-en-san-juan-bosco-59720890.html'}]
-Loader(Transformed, Credentials)
-
-
-'''
-CREATE TABLE Housing (
-HouseID VARCHAR(30) NOT NULL PRIMARY KEY,
-Name VARCHAR(250) NOT NULL,
-Price INTEGER NOT NULL CHECK(Price > 0),
-Rooms SMALLINT NOT NULL ,
-Bathrooms SMALLINT,
-Size INTEGER NOT NULL,
-Type VARCHAR(12) NOT NULL,
-Sale CHAR(4) CHECK(Sale = 'rent' OR Sale = 'sale'),
-Location VARCHAR(75),
-Year INTEGER NOT NULL CHECK(Year > 2000 AND Year < 2030),
-Url VARCHAR(200) NOT NULL,
-Permalink VARCHAR(200) NOT NULL
-);
-'''
+if __name__ == "__main__":
+    Extracted = Extractor(Urls)
+    Transformed = Transformer(Extracted)
+    Loader(Transformed, Credentials)
