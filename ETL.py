@@ -2,6 +2,7 @@
 @author: Covariant Joe
 
 Functions to add to Apache Airflow pipeline to web scrape house market data in Guadalajara.
+ETL.py may be used alone or from AirflowDAG.py.
 Performs the ETL process, saving the data to a IBM db2 warehouse and an inflation data mart.
 It prevents duplicates from being written to the db.
 
@@ -119,10 +120,7 @@ Url66 = "https://web.archive.org/web/20150819080049/www.inmuebles24.com/departam
 Url67 = "https://web.archive.org/web/20151208005800/www.inmuebles24.com/casas-en-venta-en-guadalajara.html"
 Url68 = "https://web.archive.org/web/20151202073008/www.inmuebles24.com/departamentos-en-venta-en-guadalajara.html"
 
-#_Desde_145_NoIndex_True
-Urls = [ globals()[f"Url{i}"] for i in range(62,69) ]
-#Urls = [Url47]
-
+Urls = [ globals()[f"Url{i}"] for i in range(1,69) ]
 
 def log(message):
     now = datetime.now()
@@ -633,6 +631,7 @@ def Loader(data, Credentials):
     import ibm_db_dbi
     counter = 0
     PATH = os.getcwd()
+    log(f"[Info] - Inside Loader")
     try:
         with open(Credentials, 'r') as f:
            credentials = json.loads(f.read())
@@ -692,7 +691,7 @@ def Loader(data, Credentials):
             with open(PATH + "/History.sql",'a') as f:
                 f.write(f"INSERT INTO Housing (HouseID, Name, Price, Rooms, Bathrooms, Size, Type, Sale, Location, Year, Url, Permalink) VALUES {tuple(house.values())}; \n")
         
-    log(f"[Info] - Success Saving {counter} unique new entries to IBM db2 out of {len(Transformed)} valid, transformed data.")
+    log(f"[Info] - Success Saving {counter} unique new entries to IBM db2 out of {len(data)} valid, transformed data.")
     ibm_db.close(ibm_conn)
     return
 
