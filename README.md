@@ -1,4 +1,4 @@
-# 2015-2025 Guadalajara Housing Market Analysis
+# 2015-2025 Guadalajara Real State Market Analysis
 
 This repository contains a full implementation of the data lifecycle for the Guadalajara housing market. Covering extraction from over 65 web sources, cloud database administration, and a final Microsoft Power BI report with key conclusions.
 
